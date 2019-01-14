@@ -1,9 +1,4 @@
 #!/usr/bin/env python
-'''
-Reads the mass spec fragments from percolator and mascot and filters them against the mouse proteome to identify a set of fragments that do not map to known proteins.
-Genomic coordinates of these fragments are then identified using blast and some info about position relative to exons/other genes are noted.
-An IGV script is created for each fragment to allow automated visualisation of the alignment in IGV.
-'''
 import sys, subprocess, os, requests
 import pandas as pd
 
@@ -136,6 +131,16 @@ if len(sys.argv) > 2:
 		else:
 			strand = -1
 		temp2 = temp[1].split("-")
+		#Extract nucleotide sequence from database based on ID
+		print("Extracting nucleotide sequence")
+		if not os.path.exists(data_folder + "/Potential_Novel_Peptide_ORFs/" + temp[0] + "." + temp[1].replace(".","_") + "." + temp[2] + ".fna"):
+			seq = open(data_folder + "/Potential_Novel_Peptide_ORFs/" + temp[0] + "." + temp[1].replace(".","_") + "." + temp[2] + ".fna", "w")
+			if temp[2] == "+":
+				seq.write(subprocess.run(["pcregrep", "--buffer-size", "320000", "-M", ">" + temp[0] + ":" + temp[1] + ":\\" + temp[2] + "\\n[ACTG]+", nucdb],stdout=subprocess.PIPE).stdout.decode('utf-8'))
+			else:
+				seq.write(subprocess.run(["pcregrep", "--buffer-size", "320000", "-M", ">" + temp[0] + ":" + temp[1] + ":" + temp[2] + "\\n[ACTG]+", nucdb],stdout=subprocess.PIPE).stdout.decode('utf-8'))
+			seq.close()
+		#Identify real start and end if transcript reigon was split into multiple entries
 		if d.find("_") != -1:
 			checkcoords = subprocess.run(" ".join(["blastn", "-db", data_folder + "/blastdb/mm10.fa", "-query", data_folder + "/Potential_Novel_Peptide_ORFs/" + temp[0] + "." + temp[1].replace(".","_") + "." + temp[2] + ".fna", "-perc_identity", "100.0", "-qcov_hsp_perc", "100.0", "-outfmt", "\"6", "qseqid", "sseqid", "qlen", "length", "nident", "gaps", "bitscore", "evalue", "qstart", "qend", "sstart", "send\""]), shell=True, stdout=subprocess.PIPE).stdout.decode('utf-8').split("\n")[:-1]
 			print(checkcoords)
@@ -146,15 +151,7 @@ if len(sys.argv) > 2:
 			end = temp2[1]
 		region_length = int(end) - int(start)
 		protid = temp2[2]
-		#Extract nucleotide sequence from database based on ID
-		print("Extracting nucleotide sequence")
-		if not os.path.exists(data_folder + "/Potential_Novel_Peptide_ORFs/" + temp[0] + "." + temp[1].replace(".","_") + "." + temp[2] + ".fna"):
-			seq = open(data_folder + "/Potential_Novel_Peptide_ORFs/" + temp[0] + "." + temp[1].replace(".","_") + "." + temp[2] + ".fna", "w")
-			if temp[2] == "+":
-				seq.write(subprocess.run(["pcregrep", "--buffer-size", "320000", "-M", ">" + temp[0] + ":" + temp[1] + ":\\" + temp[2] + "\\n[ACTG]+", nucdb],stdout=subprocess.PIPE).stdout.decode('utf-8'))
-			else:
-				seq.write(subprocess.run(["pcregrep", "--buffer-size", "320000", "-M", ">" + temp[0] + ":" + temp[1] + ":" + temp[2] + "\\n[ACTG]+", nucdb],stdout=subprocess.PIPE).stdout.decode('utf-8'))
-			seq.close()
+		
 		#Finding ORFs
 		
 		#if not os.path.exists(data_folder + "/Potential_Novel_Peptide_ORFs/" + temp[0] + "." + temp[1].replace(".","_") + "." + temp[2] + ".ORFfinder.faa"):
@@ -185,7 +182,7 @@ if len(sys.argv) > 2:
 			for a in checkknownproteins:
 				print(a)
 				a_field = a.split("\t")
-				if abs(a_field[2] - a_field[3]) <= 1 and abs(int(a_field[2]) - int(a_field[4])) <= 1 and a_field[0] not in sigalignments and int(a_field[5]) == 0:
+				if abs(int(a_field[2]) - int(a_field[3])) <= 1 and abs(int(a_field[2]) - int(a_field[4])) <= 1 and a_field[0] not in sigalignments and int(a_field[5]) == 0:
 					sigalignments.append(a_field[0])
 			frags = open(data_folder + "/Potential_Novel_Peptide_ORFs/" + temp[0] + "." + temp[1].replace(".","_") + "." + temp[2] + ".fragments.faa")
 			fragdata = frags.read().split("\n")[:-1]

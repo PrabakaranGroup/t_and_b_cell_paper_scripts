@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-'''
-Genomic coordinates of the novel fragments are searched against Ensembl to identify genomic features to classify fragments. 
-'''
 import sys, subprocess, os, requests, time
 
 server = "https://rest.ensembl.org"
@@ -68,7 +65,7 @@ def classify_overlap(test_start,test_end,reference_start,reference_end,strand):
 			return("within")
 
 f = open(data_folder + "/novel_transcript_fragment_alignment_list_filtered.txt")
-data = f.read().split("\n")[1:-1]
+data = f.read().split("\n")[:-1]
 f.close()
 
 
